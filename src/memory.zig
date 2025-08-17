@@ -57,9 +57,7 @@ test "memory" {
     var mem = Memory.init(alloc);
     defer mem.deinit();
 
-    var memory = Memory.init(alloc);
-    _ = memory.store(0, &.{ 0x01, 0x02, 0x03, 0x04 }) catch unreachable;
-    _ = memory.load(0);
+    _ = mem.store(0, &.{ 0x01, 0x02, 0x03, 0x04 }) catch unreachable;
 
-    std.debug.print("Memory contents: {any}\n", .{memory.buf.items});
+    std.debug.print("Memory contents: {any}\n", .{mem.buf.items});
 }

@@ -36,12 +36,12 @@ pub const Log = struct {
 test "Log creation and topics" {
     const allocator = std.testing.allocator;
     
-    const address = types.address(&[_]u8{0xaa});
+    const address: Address = 0xaa;
     var log = Log.init(allocator, address);
     defer log.deinit();
     
-    const topic1 = types.word(&[_]u8{0x01});
-    const topic2 = types.word(&[_]u8{0x02});
+    const topic1: Word = 0x01;
+    const topic2: Word = 0x02;
     
     try log.addTopic(topic1);
     try log.addTopic(topic2);

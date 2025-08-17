@@ -1,73 +1,112 @@
 const std = @import("std");
-const testing = std.testing;
-const types = @import("types.zig");
 
-const Word = types.Word;
-const StorageMap = std.HashMap(Word, Word, std.hash_map.AutoContext(Word), std.hash_map.default_max_load_percentage);
-const CacheList = std.ArrayList(Word);
+pub const Key = u256;
+pub const Word = u256;
+const ZERO: Word = 0;
 
 pub const Storage = struct {
-    storage: StorageMap,
-    cache: CacheList,
-    allocator: std.mem.Allocator,
+    map:  std.HashMapUnmanaged(Key, ?u32, std.hash_map.AutoContext(Key), 80),
+    slab: std.ArrayListUnmanaged(Word),
 
-    pub fn init(allocator: std.mem.Allocator) Storage {
-        return Storage{
-            .storage = StorageMap.init(allocator),
-            .cache = CacheList.init(allocator),
-            .allocator = allocator,
-        };
+    pub fn init() Storage {
+        return .{ .map = .{}, .slab = .{} };
+    }
+    
+    pub fn deinit(self: *Storage, a: std.mem.Allocator) void {
+        self.map.deinit(a);
+        self.slab.deinit(a);
     }
 
-    pub fn deinit(self: *Storage) void {
-        self.storage.deinit();
-        self.cache.deinit();
+    pub fn reserve(self: *Storage, a: std.mem.Allocator, n_keys: usize) !void {
+        try self.map.ensureTotalCapacity(a, n_keys);
+        try self.slab.ensureTotalCapacity(a, n_keys);
     }
 
-    pub fn store(self: *Storage, key: Word, value: Word) !void {
-        try self.storage.put(key, value);
+    pub fn load(self: *Storage, a: std.mem.Allocator, key: Key) !struct { warm: bool, value: Word } {
+        if (self.map.getPtr(key)) |idx_opt| {
+            return .{
+                .warm = true,
+                .value = if (idx_opt.*) |i| self.slab.items[i] else ZERO,
+            };
+        }
+        const e = try self.map.getOrPut(a, key);
+        e.value_ptr.* = null;
+        return .{ .warm = false, .value = ZERO };
     }
 
-    pub fn load(self: *Storage, key: Word) Word {
-        // Check if key is in cache
-        for (self.cache.items) |cached_key| {
-            if (std.mem.eql(u8, &cached_key, &key)) {
-                const value = self.storage.get(key);
-                if (value) |v| {
-                    return v;
-                }
-                return types.ZERO_WORD;
+    pub fn store(self: *Storage, a: std.mem.Allocator, key: Key, val: Word) !bool {
+        const e = try self.map.getOrPut(a, key);
+        const warm = e.found_existing;
+        
+        if (e.found_existing) {
+            if (e.value_ptr.*) |i| {
+                self.slab.items[i] = val;
+            } else {
+                const i: u32 = @intCast(self.slab.items.len);
+                try self.slab.append(a, val);
+                e.value_ptr.* = i;
             }
+        } else {
+            const i: u32 = @intCast(self.slab.items.len);
+            try self.slab.append(a, val);
+            e.value_ptr.* = i;
         }
+        return warm;
+    }
 
-        // Key not in cache, add it
-        self.cache.append(key) catch unreachable;
-
-        const value = self.storage.get(key);
-        if (value) |v| {
-            return v;
-        }
-
-        return types.ZERO_WORD;
+    pub fn resetTx(self: *Storage) void {
+        self.map.clearRetainingCapacity();
+        self.slab.clearRetainingCapacity();
     }
 };
 
 test "store and load" {
-    var storage = Storage.init(std.testing.allocator);
-    defer storage.deinit();
+    const testing = std.testing;
+    var storage = Storage.init();
+    defer storage.deinit(testing.allocator);
 
-    const key = types.word(&[_]u8{0x01});
-    const value = types.word(&[_]u8{0x05});
+    const key: Key = 0x01;
+    const value: Word = 0x05;
 
-    try storage.store(key, value);
+    _ = try storage.store(testing.allocator, key, value);
+    const result = try storage.load(testing.allocator, key);
+    try testing.expectEqual(value, result.value);
 }
 
-test "try loading from empty storage" {
-    var storage = Storage.init(std.testing.allocator);
-    defer storage.deinit();
+test "warm/cold tracking" {
+    const testing = std.testing;
+    var storage = Storage.init();
+    defer storage.deinit(testing.allocator);
 
-    const key = types.word(&[_]u8{0x01});
-    const value = storage.load(key);
-    const expected = types.ZERO_WORD;
-    try testing.expectEqual(expected, value);
+    const key: Key = 0x42;
+    const value: Word = 0x1a4;
+    
+    const result1 = try storage.load(testing.allocator, key);
+    try testing.expect(!result1.warm);
+    try testing.expectEqual(ZERO, result1.value);
+    
+    const result2 = try storage.load(testing.allocator, key);
+    try testing.expect(result2.warm);
+    
+    const warm = try storage.store(testing.allocator, key, value);
+    try testing.expect(warm);
+    
+    const result3 = try storage.load(testing.allocator, key);
+    try testing.expect(result3.warm);
+    try testing.expectEqual(value, result3.value);
+    
+    storage.resetTx();
+    const result4 = try storage.load(testing.allocator, key);
+    try testing.expect(!result4.warm);
+    try testing.expectEqual(ZERO, result4.value);
+}
+
+test "empty storage" {
+    const testing = std.testing;
+    var storage = Storage.init();
+    defer storage.deinit(testing.allocator);
+
+    const key: Key = 0x01;
+    const result = try storage.load(testing.allocator, key);
+    try testing.expectEqual(ZERO, result.value);
 }

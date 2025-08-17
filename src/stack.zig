@@ -69,18 +69,18 @@ test "stack ops" {
     var stack = Stack.init(allocator);
     defer stack.deinit();
 
-    const val1 = types.word(&[_]u8{0x01});
-    const val2 = types.word(&[_]u8{0x02});
+    const val1: Word = 0x01;
+    const val2: Word = 0x02;
 
     try stack.push(val1);
     try stack.push(val2);
 
     const popped = try stack.pop();
-    try std.testing.expectEqualSlices(u8, &val2, &popped);
+    try std.testing.expectEqual(val2, popped);
 
     try stack.push(val2);
     try stack.dup(0);
 
     const top = try stack.peek(0);
-    try std.testing.expectEqualSlices(u8, &val2, &top);
+    try std.testing.expectEqual(val2, top);
 }

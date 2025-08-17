@@ -47,7 +47,7 @@ pub const State = struct {
             .pc = 0,
             .stack = Stack.init(allocator),
             .memory = Memory.init(allocator),
-            .storage = Storage.init(allocator),
+            .storage = Storage.init(),
             .sender = sender,
             .program = prog,
             .gas = gas,
@@ -64,7 +64,7 @@ pub const State = struct {
     pub fn deinit(self: *State) void {
         self.stack.deinit();
         self.memory.deinit();
-        self.storage.deinit();
+        self.storage.deinit(self.allocator);
         self.program.deinit();
         self.calldata.deinit();
         self.returndata.deinit();
@@ -122,10 +122,10 @@ pub const State = struct {
 test "State initialization and gas" {
     const allocator = std.testing.allocator;
     
-    const sender = types.address(&[_]u8{0x01});
+    const sender: Address = 0x01;
     const program = [_]u8{ 0x60, 0x01, 0x60, 0x02, 0x01 };
     const gas: u64 = 100000;
-    const value = types.ZERO_WORD;
+    const value: Word = 0;
     const calldata = [_]u8{ 0xaa, 0xbb, 0xcc };
     
     var state = try State.init(allocator, sender, &program, gas, value, &calldata);
@@ -143,9 +143,9 @@ test "State initialization and gas" {
 test "State program counter" {
     const allocator = std.testing.allocator;
     
-    const sender = types.ZERO_ADDRESS;
+    const sender: Address = 0;
     const program = [_]u8{ 0x60, 0x01, 0x60, 0x02 };
-    const value = types.ZERO_WORD;
+    const value: Word = 0;
     
     var state = try State.init(allocator, sender, &program, 1000, value, &[_]u8{});
     defer state.deinit();

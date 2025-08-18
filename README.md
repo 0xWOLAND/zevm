@@ -16,3 +16,4 @@ zig build run
 - [ ] Real block/chain context (currently mocked)
 - [ ] Transient storage (TLOAD/TSTORE) 
 - [ ] External code fetching
+- [ ] integrate `evmc`

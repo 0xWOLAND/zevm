@@ -1,5 +1,5 @@
 const std = @import("std");
-const types = @import("types.zig");
+const types = @import("../types.zig");
 
 const Word = types.Word;
 const MAX_STACK_DEPTH = types.MAX_STACK_DEPTH;

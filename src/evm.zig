@@ -1,8 +1,8 @@
 const std = @import("std");
 const types = @import("types.zig");
-const Stack = @import("stack.zig").Stack;
-const Memory = @import("memory.zig").Memory;
-const Storage = @import("storage.zig").Storage;
+const Stack = @import("core/stack.zig").Stack;
+const Memory = @import("core/memory.zig").Memory;
+const Storage = @import("core/storage.zig").Storage;
 
 const Word = types.Word;
 
@@ -200,9 +200,7 @@ const handlers = blk: {
     table[0x5B] = jump.jumpdest;
 
     // Push operations (0x60-0x7F)
-    var i: usize = 0;
-    while (i < 32) : (i += 1) {
-        const n = i;
+    for (0..32) |n| {
         table[0x60 + n] = struct {
             fn f(evm: *EVM) anyerror!void {
                 try push.push(evm, n + 1);
@@ -211,9 +209,7 @@ const handlers = blk: {
     }
 
     // Dup operations (0x80-0x8F)
-    i = 0;
-    while (i < 16) : (i += 1) {
-        const n = i;
+    for (0..16) |n| {
         table[0x80 + n] = struct {
             fn f(evm: *EVM) anyerror!void {
                 try dup.dup(evm, n + 1);
@@ -222,9 +218,7 @@ const handlers = blk: {
     }
 
     // Swap operations (0x90-0x9F)
-    i = 0;
-    while (i < 16) : (i += 1) {
-        const n = i;
+    for (0..16) |n| {
         table[0x90 + n] = struct {
             fn f(evm: *EVM) anyerror!void {
                 try swap.swap(evm, n + 1);
@@ -253,3 +247,23 @@ const handlers = blk: {
 
     break :blk table;
 };
+
+test {
+    // Include tests from opcode modules
+    _ = @import("opcodes/stop.zig");
+    _ = @import("opcodes/math.zig");
+    _ = @import("opcodes/compare.zig");
+    _ = @import("opcodes/logic.zig");
+    _ = @import("opcodes/bit.zig");
+    _ = @import("opcodes/misc.zig");
+    _ = @import("opcodes/environment.zig");
+    _ = @import("opcodes/memory.zig");
+    _ = @import("opcodes/storage.zig");
+    _ = @import("opcodes/jump.zig");
+    _ = @import("opcodes/push.zig");
+    _ = @import("opcodes/dup.zig");
+    _ = @import("opcodes/swap.zig");
+    _ = @import("opcodes/log.zig");
+    _ = @import("opcodes/contract.zig");
+    _ = @import("opcodes/pop.zig");
+}

@@ -58,6 +58,6 @@ test "memory" {
     defer mem.deinit();
 
     _ = mem.store(0, &.{ 0x01, 0x02, 0x03, 0x04 }) catch unreachable;
-
-    std.debug.print("Memory contents: {any}\n", .{mem.buf.items});
+    
+    try std.testing.expectEqualSlices(u8, mem.buf.items, &.{ 0x01, 0x02, 0x03, 0x04 });
 }

@@ -1,6 +1,6 @@
-const State = @import("../state.zig").State;
+const EVM = @import("../evm.zig").EVM;
 
-pub fn stop(state: *State) !void {
-    state.stop_flag = true;
+pub fn stop(evm: *EVM) !void {
+    evm.stop_flag = true;
     return;
 }

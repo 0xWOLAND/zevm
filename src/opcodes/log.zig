@@ -1,33 +1,47 @@
-const State = @import("../state.zig").State;
-const Log = @import("../log.zig").Log;
+const EVM = @import("../evm.zig").EVM;
+const types = @import("../types.zig");
 
-fn calcGas(topic_count: u64, size: u256) u64 {
+fn calcGas(topic_count: u64, size: types.Word) u64 {
     return 375 * topic_count + 8 * @as(u64, @intCast(size));
 }
 
-fn logN(state: *State, n: u8) !void {
-    const offset = try state.stack.pop();
-    const size = try state.stack.pop();
-    
-    var log = Log.init(state.allocator, 0); // TODO: Use actual contract address
-    
+fn logN(evm: *EVM, n: u8) !void {
+    const offset = try evm.stack.pop();
+    const size = try evm.stack.pop();
+
+    var topics = try evm.allocator.alloc(types.Word, n);
+    defer evm.allocator.free(topics);
+
     var i: u8 = 0;
     while (i < n) : (i += 1) {
-        const topic = try state.stack.pop();
-        try log.addTopic(topic);
+        topics[i] = try evm.stack.pop();
     }
-    
-    const data = state.memory.access(@intCast(offset), @intCast(size));
-    try log.setData(data);
-    
-    try state.logs.append(log);
-    
-    state.pc += 1;
-    try state.consumeGas(calcGas(n, size));
+
+    const data = evm.memory.access(@intCast(offset), @intCast(size));
+    const data_copy = try evm.allocator.dupe(u8, data);
+
+    try evm.logs.append(.{
+        .address = 0, // TODO: Use actual contract address
+        .topics = topics,
+        .data = data_copy,
+    });
+
+    evm.pc += 1;
+    try evm.gasDec(@intCast(calcGas(n, size)));
 }
 
-pub fn log0(state: *State) !void { try logN(state, 0); }
-pub fn log1(state: *State) !void { try logN(state, 1); }
-pub fn log2(state: *State) !void { try logN(state, 2); }
-pub fn log3(state: *State) !void { try logN(state, 3); }
-pub fn log4(state: *State) !void { try logN(state, 4); }
+pub fn log0(evm: *EVM) !void {
+    try logN(evm, 0);
+}
+pub fn log1(evm: *EVM) !void {
+    try logN(evm, 1);
+}
+pub fn log2(evm: *EVM) !void {
+    try logN(evm, 2);
+}
+pub fn log3(evm: *EVM) !void {
+    try logN(evm, 3);
+}
+pub fn log4(evm: *EVM) !void {
+    try logN(evm, 4);
+}

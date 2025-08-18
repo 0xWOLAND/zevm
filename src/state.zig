@@ -10,23 +10,23 @@ const Address = types.Address;
 
 pub const State = struct {
     pc: u32,
-    
+
     stack: Stack,
     memory: Memory,
     storage: Storage,
-    
+
     sender: Address,
     program: std.ArrayList(u8),
     gas: u64,
     value: Word,
     calldata: std.ArrayList(u8),
-    
+
     stop_flag: bool,
     revert_flag: bool,
-    
+
     returndata: std.ArrayList(u8),
     logs: std.ArrayList(Log),
-    
+
     allocator: std.mem.Allocator,
 
     pub fn init(
@@ -39,10 +39,10 @@ pub const State = struct {
     ) !State {
         var prog = std.ArrayList(u8).init(allocator);
         try prog.appendSlice(program);
-        
+
         var call = std.ArrayList(u8).init(allocator);
         try call.appendSlice(calldata);
-        
+
         return State{
             .pc = 0,
             .stack = Stack.init(allocator),
@@ -68,7 +68,7 @@ pub const State = struct {
         self.program.deinit();
         self.calldata.deinit();
         self.returndata.deinit();
-        
+
         for (self.logs.items) |*log| {
             log.deinit();
         }
@@ -121,39 +121,39 @@ pub const State = struct {
 
 test "State initialization and gas" {
     const allocator = std.testing.allocator;
-    
+
     const sender: Address = 0x01;
     const program = [_]u8{ 0x60, 0x01, 0x60, 0x02, 0x01 };
     const gas: u64 = 100000;
     const value: Word = 0;
     const calldata = [_]u8{ 0xaa, 0xbb, 0xcc };
-    
+
     var state = try State.init(allocator, sender, &program, gas, value, &calldata);
     defer state.deinit();
-    
+
     try std.testing.expect(state.pc == 0);
     try std.testing.expect(state.gas == 100000);
-    
+
     try state.consumeGas(50000);
     try std.testing.expect(state.gas == 50000);
-    
+
     try std.testing.expectError(error.OutOfGas, state.consumeGas(60000));
 }
 
 test "State program counter" {
     const allocator = std.testing.allocator;
-    
+
     const sender: Address = 0;
     const program = [_]u8{ 0x60, 0x01, 0x60, 0x02 };
     const value: Word = 0;
-    
+
     var state = try State.init(allocator, sender, &program, 1000, value, &[_]u8{});
     defer state.deinit();
-    
+
     const byte1 = state.getNextByte();
     try std.testing.expect(byte1.? == 0x60);
     try std.testing.expect(state.pc == 1);
-    
+
     const bytes = state.getNextBytes(2);
     try std.testing.expectEqualSlices(u8, bytes.?, &[_]u8{ 0x01, 0x60 });
     try std.testing.expect(state.pc == 3);

@@ -5,13 +5,13 @@ pub const Word = u256;
 const ZERO: Word = 0;
 
 pub const Storage = struct {
-    map:  std.HashMapUnmanaged(Key, ?u32, std.hash_map.AutoContext(Key), 80),
+    map: std.HashMapUnmanaged(Key, ?u32, std.hash_map.AutoContext(Key), 80),
     slab: std.ArrayListUnmanaged(Word),
 
     pub fn init() Storage {
         return .{ .map = .{}, .slab = .{} };
     }
-    
+
     pub fn deinit(self: *Storage, a: std.mem.Allocator) void {
         self.map.deinit(a);
         self.slab.deinit(a);
@@ -37,7 +37,7 @@ pub const Storage = struct {
     pub fn store(self: *Storage, a: std.mem.Allocator, key: Key, val: Word) !bool {
         const e = try self.map.getOrPut(a, key);
         const warm = e.found_existing;
-        
+
         if (e.found_existing) {
             if (e.value_ptr.*) |i| {
                 self.slab.items[i] = val;
@@ -80,21 +80,21 @@ test "warm/cold tracking" {
 
     const key: Key = 0x42;
     const value: Word = 0x1a4;
-    
+
     const result1 = try storage.load(testing.allocator, key);
     try testing.expect(!result1.warm);
     try testing.expectEqual(ZERO, result1.value);
-    
+
     const result2 = try storage.load(testing.allocator, key);
     try testing.expect(result2.warm);
-    
+
     const warm = try storage.store(testing.allocator, key, value);
     try testing.expect(warm);
-    
+
     const result3 = try storage.load(testing.allocator, key);
     try testing.expect(result3.warm);
     try testing.expectEqual(value, result3.value);
-    
+
     storage.resetTx();
     const result4 = try storage.load(testing.allocator, key);
     try testing.expect(!result4.warm);

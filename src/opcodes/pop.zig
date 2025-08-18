@@ -1,7 +1,7 @@
-const State = @import("../state.zig").State;
+const EVM = @import("../evm.zig").EVM;
 
-pub fn pop(state: *State) !void {
-    try state.stack.pop();
-    try state.consumeGas(2);
-    state.pc += 1;
+pub fn pop(evm: *EVM) !void {
+    _ = try evm.stack.pop();
+    try evm.gasDec(2);
+    evm.pc += 1;
 }

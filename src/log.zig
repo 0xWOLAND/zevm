@@ -35,18 +35,18 @@ pub const Log = struct {
 
 test "Log creation and topics" {
     const allocator = std.testing.allocator;
-    
+
     const address: Address = 0xaa;
     var log = Log.init(allocator, address);
     defer log.deinit();
-    
+
     const topic1: Word = 0x01;
     const topic2: Word = 0x02;
-    
+
     try log.addTopic(topic1);
     try log.addTopic(topic2);
     try log.setData(&[_]u8{ 0xff, 0xee, 0xdd });
-    
+
     try std.testing.expect(log.topics.items.len == 2);
     try std.testing.expect(log.data.items.len == 3);
 }
